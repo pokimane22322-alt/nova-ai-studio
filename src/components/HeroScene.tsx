@@ -1,130 +1,85 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Float, Environment } from '@react-three/drei';
-import { useRef, useMemo, useState, useEffect, Suspense } from 'react';
+import { useGLTF, Environment } from '@react-three/drei';
+import { useRef, useMemo, Suspense, useEffect } from 'react';
 import * as THREE from 'three';
 
-// Define the blocks that form the "N" letter
-// Each block is a rounded box positioned to form the letter N
-const N_BLOCKS = [
-  // Left vertical bar (bottom to top)
-  { pos: [-1.8, -1.5, 0], size: [0.7, 0.7, 0.5] },
-  { pos: [-1.8, -0.6, 0], size: [0.7, 0.7, 0.5] },
-  { pos: [-1.8, 0.3, 0], size: [0.7, 0.7, 0.5] },
-  { pos: [-1.8, 1.2, 0], size: [0.7, 0.7, 0.5] },
-  // Diagonal (bottom-left to top-right)
-  { pos: [-1.1, -0.9, 0], size: [0.7, 0.7, 0.5] },
-  { pos: [-0.3, -0.1, 0], size: [0.7, 0.7, 0.5] },
-  { pos: [0.5, 0.7, 0], size: [0.7, 0.7, 0.5] },
-  // Right vertical bar (bottom to top)
-  { pos: [1.3, -1.5, 0], size: [0.7, 0.7, 0.5] },
-  { pos: [1.3, -0.6, 0], size: [0.7, 0.7, 0.5] },
-  { pos: [1.3, 0.3, 0], size: [0.7, 0.7, 0.5] },
-  { pos: [1.3, 1.2, 0], size: [0.7, 0.7, 0.5] },
-];
-
-interface BlockProps {
-  targetPos: [number, number, number];
-  size: [number, number, number];
-  index: number;
-  scrollProgress: number;
-}
-
-function Block({ targetPos, size, index, scrollProgress }: BlockProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const edgesRef = useRef<THREE.LineSegments>(null);
-
-  // Random scattered position for disassembled state
-  const scatterPos = useMemo(() => {
-    const angle = (index / N_BLOCKS.length) * Math.PI * 2 + index * 0.5;
-    const radius = 4 + Math.random() * 3;
-    return new THREE.Vector3(
-      Math.cos(angle) * radius,
-      Math.sin(angle) * radius + (Math.random() - 0.5) * 4,
-      (Math.random() - 0.5) * 5 - 2
-    );
-  }, [index]);
-
-  const scatterRot = useMemo(() => new THREE.Euler(
-    Math.random() * Math.PI * 2,
-    Math.random() * Math.PI * 2,
-    Math.random() * Math.PI * 2
-  ), []);
-
-  const target = useMemo(() => new THREE.Vector3(...targetPos), [targetPos]);
-
-  useFrame((_, delta) => {
-    if (!meshRef.current) return;
-
-    // Progress 0 = assembled, 1 = scattered
-    const t = Math.min(Math.max(scrollProgress * 1.5, 0), 1);
-    const eased = t * t * (3 - 2 * t); // smoothstep
-
-    // Interpolate position
-    meshRef.current.position.lerpVectors(target, scatterPos, eased);
-
-    // Interpolate rotation
-    meshRef.current.rotation.x = THREE.MathUtils.lerp(0, scatterRot.x, eased);
-    meshRef.current.rotation.y = THREE.MathUtils.lerp(0, scatterRot.y, eased);
-    meshRef.current.rotation.z = THREE.MathUtils.lerp(0, scatterRot.z, eased);
-
-    // Glow intensity based on scroll
-    if (edgesRef.current) {
-      const mat = edgesRef.current.material as THREE.LineBasicMaterial;
-      mat.opacity = 0.3 + (1 - eased) * 0.5;
-    }
-  });
-
-  const geometry = useMemo(() => {
-    return new THREE.BoxGeometry(size[0], size[1], size[2], 1, 1, 1);
-  }, [size]);
-
-  const edgesGeom = useMemo(() => {
-    return new THREE.EdgesGeometry(geometry);
-  }, [geometry]);
-
-  return (
-    <group>
-      <mesh ref={meshRef} geometry={geometry} castShadow receiveShadow>
-        <meshPhysicalMaterial
-          color="#6B00FF"
-          metalness={0.9}
-          roughness={0.15}
-          clearcoat={1}
-          clearcoatRoughness={0.1}
-          envMapIntensity={2}
-          emissive="#3300AA"
-          emissiveIntensity={0.15}
-        />
-        <lineSegments ref={edgesRef} geometry={edgesGeom}>
-          <lineBasicMaterial color="#00F0FF" transparent opacity={0.6} />
-        </lineSegments>
-      </mesh>
-    </group>
-  );
-}
-
-function NLogo({ scrollProgress }: { scrollProgress: number }) {
+function LogoModel({ scrollProgress }: { scrollProgress: number }) {
+  const { scene } = useGLTF('/models/logo.glb');
   const groupRef = useRef<THREE.Group>(null);
+  const meshesRef = useRef<
+    { mesh: THREE.Mesh; originalPos: THREE.Vector3; scatterPos: THREE.Vector3; scatterRot: THREE.Euler }[]
+  >([]);
+
+  useEffect(() => {
+    const meshes: typeof meshesRef.current = [];
+    let index = 0;
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+
+        // Apply purple metallic material
+        mesh.material = new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color('#6B00FF'),
+          metalness: 0.9,
+          roughness: 0.15,
+          clearcoat: 1,
+          clearcoatRoughness: 0.1,
+          envMapIntensity: 2,
+          emissive: new THREE.Color('#3300AA'),
+          emissiveIntensity: 0.15,
+        });
+
+        // Add glowing edges
+        const edges = new THREE.EdgesGeometry(mesh.geometry);
+        const edgeMesh = new THREE.LineSegments(
+          edges,
+          new THREE.LineBasicMaterial({ color: '#00F0FF', transparent: true, opacity: 0.6 })
+        );
+        mesh.add(edgeMesh);
+
+        const originalPos = mesh.position.clone();
+        const angle = (index / 15) * Math.PI * 2 + index * 0.7;
+        const radius = 5 + Math.random() * 4;
+        const scatterPos = new THREE.Vector3(
+          Math.cos(angle) * radius,
+          Math.sin(angle) * radius + (Math.random() - 0.5) * 5,
+          (Math.random() - 0.5) * 6 - 3
+        );
+        const scatterRot = new THREE.Euler(
+          Math.random() * Math.PI * 2,
+          Math.random() * Math.PI * 2,
+          Math.random() * Math.PI * 2
+        );
+
+        meshes.push({ mesh, originalPos, scatterPos, scatterRot });
+        index++;
+      }
+    });
+    meshesRef.current = meshes;
+  }, [scene]);
 
   useFrame((state) => {
     if (!groupRef.current) return;
-    // Gentle floating rotation when assembled
+
     const t = Math.min(Math.max(scrollProgress * 1.5, 0), 1);
-    groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.1 * (1 - t);
-    groupRef.current.rotation.x = -0.3 + Math.sin(state.clock.elapsedTime * 0.2) * 0.05 * (1 - t);
+    const eased = t * t * (3 - 2 * t);
+
+    // Gentle floating when assembled
+    groupRef.current.rotation.y = 0.2 + Math.sin(state.clock.elapsedTime * 0.3) * 0.1 * (1 - eased);
+    groupRef.current.rotation.x = -0.3 + Math.sin(state.clock.elapsedTime * 0.2) * 0.05 * (1 - eased);
+
+    // Animate each mesh piece
+    for (const { mesh, originalPos, scatterPos, scatterRot } of meshesRef.current) {
+      mesh.position.lerpVectors(originalPos, scatterPos, eased);
+      mesh.rotation.x = THREE.MathUtils.lerp(0, scatterRot.x, eased);
+      mesh.rotation.y = THREE.MathUtils.lerp(0, scatterRot.y, eased);
+      mesh.rotation.z = THREE.MathUtils.lerp(0, scatterRot.z, eased);
+    }
   });
 
   return (
-    <group ref={groupRef} rotation={[-0.3, 0.2, 0]} position={[0.5, 0.3, 0]}>
-      {N_BLOCKS.map((block, i) => (
-        <Block
-          key={i}
-          targetPos={block.pos as [number, number, number]}
-          size={block.size as [number, number, number]}
-          index={i}
-          scrollProgress={scrollProgress}
-        />
-      ))}
+    <group ref={groupRef} position={[0.5, 0, 0]} scale={1.2}>
+      <primitive object={scene} />
     </group>
   );
 }
@@ -151,17 +106,14 @@ function Particles() {
   return (
     <points ref={pointsRef}>
       <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[positions, 3]}
-        />
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
       <pointsMaterial color="#00F0FF" size={0.03} transparent opacity={0.5} sizeAttenuation />
     </points>
   );
 }
 
-function SceneLighting() {
+function Scene({ scrollProgress }: { scrollProgress: number }) {
   return (
     <>
       <ambientLight intensity={0.2} />
@@ -169,16 +121,8 @@ function SceneLighting() {
       <directionalLight position={[-5, 3, 2]} intensity={0.5} color="#00F0FF" />
       <pointLight position={[0, 0, 3]} intensity={2} color="#6B00FF" distance={10} />
       <pointLight position={[3, -2, 1]} intensity={1} color="#00F0FF" distance={8} />
-    </>
-  );
-}
-
-function Scene({ scrollProgress }: { scrollProgress: number }) {
-  return (
-    <>
-      <SceneLighting />
       <Particles />
-      <NLogo scrollProgress={scrollProgress} />
+      <LogoModel scrollProgress={scrollProgress} />
       <Environment preset="night" />
     </>
   );
@@ -198,3 +142,5 @@ export default function HeroScene({ scrollProgress }: { scrollProgress: number }
     </Canvas>
   );
 }
+
+useGLTF.preload('/models/logo.glb');

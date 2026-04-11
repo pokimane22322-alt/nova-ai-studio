@@ -167,8 +167,8 @@ function LogoBlocks({ scrollProgress }: { scrollProgress: number }) {
     const t = Math.min(Math.max(scrollProgress * 1.5, 0), 1);
     const eased = t * t * (3 - 2 * t);
 
-    groupRef.current.rotation.y = 0.2 + Math.sin(state.clock.elapsedTime * 0.3) * 0.1 * (1 - eased);
-    groupRef.current.rotation.x = -0.3 + Math.sin(state.clock.elapsedTime * 0.2) * 0.05 * (1 - eased);
+    groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.08 * (1 - eased);
+    groupRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.2) * 0.04 * (1 - eased);
 
     meshRefs.current.forEach((mesh, i) => {
       if (!mesh || !blocks[i]) return;

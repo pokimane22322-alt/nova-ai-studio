@@ -1,207 +1,121 @@
 import { Canvas, useFrame } from '@react-three/fiber';
-import { useGLTF, Environment } from '@react-three/drei';
-import { useRef, useMemo, Suspense, useEffect, useState } from 'react';
+import { Environment } from '@react-three/drei';
+import { Suspense, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 
-/**
- * Split a single BufferGeometry into connected components (islands).
- * Each island becomes its own geometry that can animate independently.
- */
-function splitIntoIslands(geometry: THREE.BufferGeometry): THREE.BufferGeometry[] {
-  const posAttr = geometry.getAttribute('position');
-  const normAttr = geometry.getAttribute('normal');
-  const index = geometry.getIndex();
-  if (!index) return [geometry];
+const N_BLOCKS = [
+  { pos: [-1.85, -1.5, 0], size: [0.72, 0.72, 0.56] },
+  { pos: [-1.85, -0.6, 0], size: [0.72, 0.72, 0.56] },
+  { pos: [-1.85, 0.3, 0], size: [0.72, 0.72, 0.56] },
+  { pos: [-1.85, 1.2, 0], size: [0.72, 0.72, 0.56] },
+  { pos: [-1.1, -0.9, 0], size: [0.72, 0.72, 0.56] },
+  { pos: [-0.3, -0.1, 0], size: [0.72, 0.72, 0.56] },
+  { pos: [0.5, 0.7, 0], size: [0.72, 0.72, 0.56] },
+  { pos: [1.25, -1.5, 0], size: [0.72, 0.72, 0.56] },
+  { pos: [1.25, -0.6, 0], size: [0.72, 0.72, 0.56] },
+  { pos: [1.25, 0.3, 0], size: [0.72, 0.72, 0.56] },
+  { pos: [1.25, 1.2, 0], size: [0.72, 0.72, 0.56] },
+] as const;
 
-  const vertCount = posAttr.count;
-  const indices = index.array;
-  const triCount = indices.length / 3;
-
-  // Union-Find
-  const parent = new Int32Array(vertCount);
-  const rank = new Uint8Array(vertCount);
-  for (let i = 0; i < vertCount; i++) parent[i] = i;
-
-  function find(x: number): number {
-    while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; }
-    return x;
-  }
-  function union(a: number, b: number) {
-    const ra = find(a), rb = find(b);
-    if (ra === rb) return;
-    if (rank[ra] < rank[rb]) parent[ra] = rb;
-    else if (rank[ra] > rank[rb]) parent[rb] = ra;
-    else { parent[rb] = ra; rank[ra]++; }
-  }
-
-  // Merge vertices that share a position (within epsilon) to connect pieces
-  const posMap = new Map<string, number>();
-  const canonical = new Int32Array(vertCount);
-  for (let i = 0; i < vertCount; i++) {
-    const key = `${(posAttr.getX(i) * 1000) | 0},${(posAttr.getY(i) * 1000) | 0},${(posAttr.getZ(i) * 1000) | 0}`;
-    if (posMap.has(key)) {
-      canonical[i] = posMap.get(key)!;
-      union(i, canonical[i]);
-    } else {
-      posMap.set(key, i);
-      canonical[i] = i;
-    }
-  }
-
-  // Union triangle vertices
-  for (let t = 0; t < triCount; t++) {
-    const a = indices[t * 3], b = indices[t * 3 + 1], c = indices[t * 3 + 2];
-    union(a, b);
-    union(b, c);
-  }
-
-  // Group triangles by island
-  const islandTris = new Map<number, number[]>();
-  for (let t = 0; t < triCount; t++) {
-    const root = find(indices[t * 3]);
-    if (!islandTris.has(root)) islandTris.set(root, []);
-    islandTris.get(root)!.push(t);
-  }
-
-  // Build a geometry per island
-  const results: THREE.BufferGeometry[] = [];
-  for (const [, tris] of islandTris) {
-    if (tris.length < 2) continue; // skip degenerate
-
-    // Remap vertices
-    const vertRemap = new Map<number, number>();
-    const newPositions: number[] = [];
-    const newNormals: number[] = [];
-    const newIndices: number[] = [];
-
-    for (const t of tris) {
-      for (let j = 0; j < 3; j++) {
-        const vi = indices[t * 3 + j];
-        if (!vertRemap.has(vi)) {
-          const ni = newPositions.length / 3;
-          vertRemap.set(vi, ni);
-          newPositions.push(posAttr.getX(vi), posAttr.getY(vi), posAttr.getZ(vi));
-          if (normAttr) newNormals.push(normAttr.getX(vi), normAttr.getY(vi), normAttr.getZ(vi));
-        }
-        newIndices.push(vertRemap.get(vi)!);
-      }
-    }
-
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(newPositions, 3));
-    if (newNormals.length) geo.setAttribute('normal', new THREE.Float32BufferAttribute(newNormals, 3));
-    geo.setIndex(newIndices);
-    geo.computeBoundingSphere();
-    results.push(geo);
-  }
-
-  return results;
+interface BlockProps {
+  targetPos: [number, number, number];
+  size: [number, number, number];
+  index: number;
+  scrollProgress: number;
 }
 
-interface BlockData {
-  geometry: THREE.BufferGeometry;
-  center: THREE.Vector3;
-  scatterPos: THREE.Vector3;
-  scatterRot: THREE.Euler;
+function Block({ targetPos, size, index, scrollProgress }: BlockProps) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const edgesRef = useRef<THREE.LineSegments>(null);
+
+  const assembledPos = useMemo(() => new THREE.Vector3(...targetPos), [targetPos]);
+  const scatterPos = useMemo(() => {
+    const angle = (index / N_BLOCKS.length) * Math.PI * 2 + index * 0.45;
+    const radius = 4.2 + (index % 3) * 0.7;
+    return new THREE.Vector3(
+      Math.cos(angle) * radius,
+      Math.sin(angle) * radius * 0.75 + (index % 4 - 1.5) * 0.8,
+      -1.4 - (index % 3) * 0.4,
+    );
+  }, [index]);
+
+  const scatterRot = useMemo(
+    () => new THREE.Euler(
+      (index % 2 === 0 ? 1 : -1) * 0.7,
+      (index % 3 - 1) * 0.95,
+      (index % 4 - 1.5) * 0.45,
+    ),
+    [index],
+  );
+
+  const geometry = useMemo(() => new THREE.BoxGeometry(size[0], size[1], size[2], 1, 1, 1), [size]);
+  const edgeGeometry = useMemo(() => new THREE.EdgesGeometry(geometry), [geometry]);
+
+  useFrame((state) => {
+    if (!meshRef.current) return;
+
+    const disassemble = THREE.MathUtils.clamp(scrollProgress * 1.35, 0, 1);
+    const eased = disassemble * disassemble * (3 - 2 * disassemble);
+    const idleY = Math.sin(state.clock.elapsedTime * 0.9 + index) * 0.03 * (1 - eased);
+    const idleZ = Math.sin(state.clock.elapsedTime * 0.6 + index * 0.7) * 0.015 * (1 - eased);
+
+    meshRef.current.position.lerpVectors(assembledPos, scatterPos, eased);
+    meshRef.current.position.y += idleY;
+    meshRef.current.position.z += idleZ;
+
+    meshRef.current.rotation.x = THREE.MathUtils.lerp(0, scatterRot.x, eased);
+    meshRef.current.rotation.y = THREE.MathUtils.lerp(0, scatterRot.y, eased);
+    meshRef.current.rotation.z = THREE.MathUtils.lerp(0, scatterRot.z, eased);
+
+    if (edgesRef.current) {
+      const material = edgesRef.current.material as THREE.LineBasicMaterial;
+      material.opacity = 0.55 + (1 - eased) * 0.25;
+    }
+  });
+
+  return (
+    <mesh ref={meshRef} geometry={geometry} castShadow receiveShadow>
+      <meshPhysicalMaterial
+        color="#6B00FF"
+        metalness={0.92}
+        roughness={0.14}
+        clearcoat={1}
+        clearcoatRoughness={0.08}
+        envMapIntensity={2.2}
+        emissive="#2A0070"
+        emissiveIntensity={0.18}
+      />
+      <lineSegments ref={edgesRef} geometry={edgeGeometry}>
+        <lineBasicMaterial color="#00F0FF" transparent opacity={0.8} />
+      </lineSegments>
+    </mesh>
+  );
 }
 
-function LogoBlocks({ scrollProgress }: { scrollProgress: number }) {
-  const { scene } = useGLTF('/models/logo.glb');
+function NLogo({ scrollProgress }: { scrollProgress: number }) {
   const groupRef = useRef<THREE.Group>(null);
-  const meshRefs = useRef<THREE.Mesh[]>([]);
-  const [blocks, setBlocks] = useState<BlockData[]>([]);
-
-  useEffect(() => {
-    const allBlocks: BlockData[] = [];
-    scene.traverse((child) => {
-      if (!(child as THREE.Mesh).isMesh) return;
-      const mesh = child as THREE.Mesh;
-      const islands = splitIntoIslands(mesh.geometry);
-
-      islands.forEach((geo, i) => {
-        // Center each island geometry on its own centroid
-        geo.computeBoundingBox();
-        const center = new THREE.Vector3();
-        geo.boundingBox!.getCenter(center);
-
-        // Apply any parent transforms
-        center.applyMatrix4(mesh.matrixWorld);
-
-        // Translate geometry so it's centered at origin (we'll position with the mesh)
-        const positions = geo.getAttribute('position');
-        for (let v = 0; v < positions.count; v++) {
-          positions.setXYZ(
-            v,
-            positions.getX(v) - (geo.boundingBox!.max.x + geo.boundingBox!.min.x) / 2,
-            positions.getY(v) - (geo.boundingBox!.max.y + geo.boundingBox!.min.y) / 2,
-            positions.getZ(v) - (geo.boundingBox!.max.z + geo.boundingBox!.min.z) / 2,
-          );
-        }
-        positions.needsUpdate = true;
-
-        const angle = (i / Math.max(islands.length, 1)) * Math.PI * 2 + i * 0.7;
-        const radius = 5 + Math.random() * 4;
-
-        allBlocks.push({
-          geometry: geo,
-          center,
-          scatterPos: new THREE.Vector3(
-            Math.cos(angle) * radius,
-            Math.sin(angle) * radius + (Math.random() - 0.5) * 5,
-            (Math.random() - 0.5) * 6 - 3
-          ),
-          scatterRot: new THREE.Euler(
-            Math.random() * Math.PI * 2,
-            Math.random() * Math.PI * 2,
-            Math.random() * Math.PI * 2
-          ),
-        });
-      });
-    });
-    setBlocks(allBlocks);
-  }, [scene]);
 
   useFrame((state) => {
     if (!groupRef.current) return;
 
-    const t = Math.min(Math.max(scrollProgress * 1.5, 0), 1);
-    const eased = t * t * (3 - 2 * t);
+    const disassemble = THREE.MathUtils.clamp(scrollProgress * 1.35, 0, 1);
+    const settle = 1 - disassemble;
 
-    groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.08 * (1 - eased);
-    groupRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.2) * 0.04 * (1 - eased);
-
-    meshRefs.current.forEach((mesh, i) => {
-      if (!mesh || !blocks[i]) return;
-      const b = blocks[i];
-      mesh.position.lerpVectors(b.center, b.scatterPos, eased);
-      mesh.rotation.x = THREE.MathUtils.lerp(0, b.scatterRot.x, eased);
-      mesh.rotation.y = THREE.MathUtils.lerp(0, b.scatterRot.y, eased);
-      mesh.rotation.z = THREE.MathUtils.lerp(0, b.scatterRot.z, eased);
-    });
+    groupRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.25) * 0.025 * settle;
+    groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.35) * 0.04 * settle;
+    groupRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.2) * 0.015 * settle;
   });
 
   return (
-    <group ref={groupRef} position={[0.5, 0, 0]} scale={1.2}>
-      {blocks.map((b, i) => (
-        <mesh
-          key={i}
-          ref={(el) => { if (el) meshRefs.current[i] = el; }}
-          geometry={b.geometry}
-          position={b.center}
-          castShadow
-          receiveShadow
-        >
-          <meshPhysicalMaterial
-            color="#6B00FF"
-            metalness={0.9}
-            roughness={0.15}
-            clearcoat={1}
-            clearcoatRoughness={0.1}
-            envMapIntensity={2}
-            emissive="#3300AA"
-            emissiveIntensity={0.15}
-          />
-        </mesh>
+    <group ref={groupRef} position={[0.55, 0.2, 0]}>
+      {N_BLOCKS.map((block, index) => (
+        <Block
+          key={index}
+          targetPos={block.pos as [number, number, number]}
+          size={block.size as [number, number, number]}
+          index={index}
+          scrollProgress={scrollProgress}
+        />
       ))}
     </group>
   );
@@ -239,13 +153,13 @@ function Particles() {
 function Scene({ scrollProgress }: { scrollProgress: number }) {
   return (
     <>
-      <ambientLight intensity={0.2} />
+      <ambientLight intensity={0.24} />
       <directionalLight position={[5, 5, 5]} intensity={1} color="#8844FF" />
-      <directionalLight position={[-5, 3, 2]} intensity={0.5} color="#00F0FF" />
+      <directionalLight position={[-5, 3, 2]} intensity={0.55} color="#00F0FF" />
       <pointLight position={[0, 0, 3]} intensity={2} color="#6B00FF" distance={10} />
       <pointLight position={[3, -2, 1]} intensity={1} color="#00F0FF" distance={8} />
       <Particles />
-      <LogoBlocks scrollProgress={scrollProgress} />
+      <NLogo scrollProgress={scrollProgress} />
       <Environment preset="night" />
     </>
   );
@@ -265,5 +179,3 @@ export default function HeroScene({ scrollProgress }: { scrollProgress: number }
     </Canvas>
   );
 }
-
-useGLTF.preload('/models/logo.glb');

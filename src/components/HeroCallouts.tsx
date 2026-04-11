@@ -1,10 +1,20 @@
 import { useEffect, useState } from 'react';
 
 const callouts = [
-  { label: 'LOCAL AI AGENTS', top: '22%', left: '8%', delay: 0.3 },
-  { label: 'BUSINESS AUTOMATION', top: '38%', left: '12%', delay: 0.6 },
-  { label: 'REPLACE MANUAL WORK', top: '54%', left: '5%', delay: 0.9 },
-  { label: 'WEBSITE SOLUTIONS', top: '70%', left: '10%', delay: 1.2 },
+  {
+    label: 'TASK AUTOMATION',
+    description: 'See how AI agents handle your repetitive workflows, from data entry to customer follow-ups, running 24/7 without breaks.',
+    top: '20%',
+    right: '5%',
+    delay: 0.3,
+  },
+  {
+    label: 'WORKFLOW INSIGHT',
+    description: 'Understand how AI describes your processes. The language it uses, the efficiency it creates, and the patterns it discovers.',
+    top: '45%',
+    left: '3%',
+    delay: 0.7,
+  },
 ];
 
 export default function HeroCallouts({ visible }: { visible: boolean }) {
@@ -23,25 +33,29 @@ export default function HeroCallouts({ visible }: { visible: boolean }) {
       {callouts.map((c, i) => (
         <div
           key={i}
-          className="absolute flex items-center gap-2 transition-all duration-700"
+          className="absolute max-w-[280px] transition-all duration-700"
           style={{
             top: c.top,
             left: c.left,
+            right: c.right,
             opacity: show ? 1 : 0,
-            transform: show ? 'translateX(0)' : 'translateX(-30px)',
+            transform: show ? 'translateY(0)' : 'translateY(20px)',
             transitionDelay: `${c.delay}s`,
           }}
         >
-          {/* Callout box */}
-          <div className="relative flex items-center">
-            <div className="border border-nova-cyan/40 bg-background/60 backdrop-blur-md px-4 py-2 font-mono text-xs tracking-widest text-foreground/90">
-              {c.label}
+          <div className="border border-nova-cyan/30 bg-background/40 backdrop-blur-md p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 rotate-45 bg-nova-cyan" />
+              <span className="font-mono text-xs tracking-widest text-foreground font-semibold">
+                {c.label}
+              </span>
             </div>
-            {/* Diamond pointer */}
-            <div className="ml-2 w-2 h-2 rotate-45 border border-nova-cyan/60 bg-nova-cyan/20" />
-            {/* Line extending right */}
-            <div className="callout-line w-16 sm:w-24 ml-1" />
+            <p className="font-mono text-[11px] text-muted-foreground leading-relaxed">
+              {c.description}
+            </p>
           </div>
+          {/* Connector line */}
+          <div className="callout-line w-12 mt-1" style={{ marginLeft: c.left ? 'auto' : '0', marginRight: c.right ? 'auto' : '0' }} />
         </div>
       ))}
     </div>

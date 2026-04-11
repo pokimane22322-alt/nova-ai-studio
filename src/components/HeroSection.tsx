@@ -19,26 +19,22 @@ export default function HeroSection() {
 
   return (
     <section ref={sectionRef} className="relative min-h-[180vh]">
-      {/* Sticky container */}
       <div className="sticky top-0 h-screen overflow-hidden">
         {/* Background gradient */}
         <div className="absolute inset-0 bg-hero-gradient" />
 
-        {/* Radial glow spots */}
-        <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full opacity-20"
+        {/* Radial glow */}
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full opacity-20"
           style={{ background: 'radial-gradient(circle, hsl(268 100% 50% / 0.4), transparent 70%)' }}
         />
-        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] rounded-full opacity-15"
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full opacity-15"
           style={{ background: 'radial-gradient(circle, hsl(185 100% 50% / 0.3), transparent 70%)' }}
         />
 
         {/* Grid overlay */}
         <div className="absolute inset-0 opacity-[0.04]"
           style={{
-            backgroundImage: `
-              linear-gradient(hsl(185 100% 50% / 0.3) 1px, transparent 1px),
-              linear-gradient(90deg, hsl(185 100% 50% / 0.3) 1px, transparent 1px)
-            `,
+            backgroundImage: `linear-gradient(hsl(185 100% 50% / 0.3) 1px, transparent 1px), linear-gradient(90deg, hsl(185 100% 50% / 0.3) 1px, transparent 1px)`,
             backgroundSize: '80px 80px',
           }}
         />
@@ -46,13 +42,15 @@ export default function HeroSection() {
         {/* Callouts */}
         <HeroCallouts visible={scrollProgress < 0.3} />
 
-        {/* 3D Scene */}
-        <div className="absolute inset-0">
-          <HeroScene scrollProgress={scrollProgress} />
+        {/* 3D Scene - centered and smaller */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-full h-full max-w-3xl max-h-[70vh]">
+            <HeroScene scrollProgress={scrollProgress} />
+          </div>
         </div>
 
-        {/* Bottom text - like Solais */}
-        <div className="absolute bottom-0 left-0 right-0 px-6 pb-12 z-20">
+        {/* Bottom text */}
+        <div className="absolute bottom-0 left-0 right-0 px-6 pb-10 z-20">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-end gap-8">
             <div>
               <div className="inline-block border border-nova-cyan/40 px-3 py-1 font-mono text-[10px] tracking-[0.3em] text-nova-cyan mb-4">

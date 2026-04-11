@@ -1,61 +1,164 @@
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { useGLTF, Environment } from '@react-three/drei';
-import { useRef, useMemo, Suspense, useEffect } from 'react';
+import { useRef, useMemo, Suspense, useEffect, useState } from 'react';
 import * as THREE from 'three';
 
-function LogoModel({ scrollProgress }: { scrollProgress: number }) {
+/**
+ * Split a single BufferGeometry into connected components (islands).
+ * Each island becomes its own geometry that can animate independently.
+ */
+function splitIntoIslands(geometry: THREE.BufferGeometry): THREE.BufferGeometry[] {
+  const posAttr = geometry.getAttribute('position');
+  const normAttr = geometry.getAttribute('normal');
+  const index = geometry.getIndex();
+  if (!index) return [geometry];
+
+  const vertCount = posAttr.count;
+  const indices = index.array;
+  const triCount = indices.length / 3;
+
+  // Union-Find
+  const parent = new Int32Array(vertCount);
+  const rank = new Uint8Array(vertCount);
+  for (let i = 0; i < vertCount; i++) parent[i] = i;
+
+  function find(x: number): number {
+    while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; }
+    return x;
+  }
+  function union(a: number, b: number) {
+    const ra = find(a), rb = find(b);
+    if (ra === rb) return;
+    if (rank[ra] < rank[rb]) parent[ra] = rb;
+    else if (rank[ra] > rank[rb]) parent[rb] = ra;
+    else { parent[rb] = ra; rank[ra]++; }
+  }
+
+  // Merge vertices that share a position (within epsilon) to connect pieces
+  const posMap = new Map<string, number>();
+  const canonical = new Int32Array(vertCount);
+  for (let i = 0; i < vertCount; i++) {
+    const key = `${(posAttr.getX(i) * 1000) | 0},${(posAttr.getY(i) * 1000) | 0},${(posAttr.getZ(i) * 1000) | 0}`;
+    if (posMap.has(key)) {
+      canonical[i] = posMap.get(key)!;
+      union(i, canonical[i]);
+    } else {
+      posMap.set(key, i);
+      canonical[i] = i;
+    }
+  }
+
+  // Union triangle vertices
+  for (let t = 0; t < triCount; t++) {
+    const a = indices[t * 3], b = indices[t * 3 + 1], c = indices[t * 3 + 2];
+    union(a, b);
+    union(b, c);
+  }
+
+  // Group triangles by island
+  const islandTris = new Map<number, number[]>();
+  for (let t = 0; t < triCount; t++) {
+    const root = find(indices[t * 3]);
+    if (!islandTris.has(root)) islandTris.set(root, []);
+    islandTris.get(root)!.push(t);
+  }
+
+  // Build a geometry per island
+  const results: THREE.BufferGeometry[] = [];
+  for (const [, tris] of islandTris) {
+    if (tris.length < 2) continue; // skip degenerate
+
+    // Remap vertices
+    const vertRemap = new Map<number, number>();
+    const newPositions: number[] = [];
+    const newNormals: number[] = [];
+    const newIndices: number[] = [];
+
+    for (const t of tris) {
+      for (let j = 0; j < 3; j++) {
+        const vi = indices[t * 3 + j];
+        if (!vertRemap.has(vi)) {
+          const ni = newPositions.length / 3;
+          vertRemap.set(vi, ni);
+          newPositions.push(posAttr.getX(vi), posAttr.getY(vi), posAttr.getZ(vi));
+          if (normAttr) newNormals.push(normAttr.getX(vi), normAttr.getY(vi), normAttr.getZ(vi));
+        }
+        newIndices.push(vertRemap.get(vi)!);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(newPositions, 3));
+    if (newNormals.length) geo.setAttribute('normal', new THREE.Float32BufferAttribute(newNormals, 3));
+    geo.setIndex(newIndices);
+    geo.computeBoundingSphere();
+    results.push(geo);
+  }
+
+  return results;
+}
+
+interface BlockData {
+  geometry: THREE.BufferGeometry;
+  center: THREE.Vector3;
+  scatterPos: THREE.Vector3;
+  scatterRot: THREE.Euler;
+}
+
+function LogoBlocks({ scrollProgress }: { scrollProgress: number }) {
   const { scene } = useGLTF('/models/logo.glb');
   const groupRef = useRef<THREE.Group>(null);
-  const meshesRef = useRef<
-    { mesh: THREE.Mesh; originalPos: THREE.Vector3; scatterPos: THREE.Vector3; scatterRot: THREE.Euler }[]
-  >([]);
+  const meshRefs = useRef<THREE.Mesh[]>([]);
+  const [blocks, setBlocks] = useState<BlockData[]>([]);
 
   useEffect(() => {
-    const meshes: typeof meshesRef.current = [];
-    let index = 0;
+    const allBlocks: BlockData[] = [];
     scene.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
+      if (!(child as THREE.Mesh).isMesh) return;
+      const mesh = child as THREE.Mesh;
+      const islands = splitIntoIslands(mesh.geometry);
 
-        // Apply purple metallic material
-        mesh.material = new THREE.MeshPhysicalMaterial({
-          color: new THREE.Color('#6B00FF'),
-          metalness: 0.9,
-          roughness: 0.15,
-          clearcoat: 1,
-          clearcoatRoughness: 0.1,
-          envMapIntensity: 2,
-          emissive: new THREE.Color('#3300AA'),
-          emissiveIntensity: 0.15,
-        });
+      islands.forEach((geo, i) => {
+        // Center each island geometry on its own centroid
+        geo.computeBoundingBox();
+        const center = new THREE.Vector3();
+        geo.boundingBox!.getCenter(center);
 
-        // Add glowing edges
-        const edges = new THREE.EdgesGeometry(mesh.geometry);
-        const edgeMesh = new THREE.LineSegments(
-          edges,
-          new THREE.LineBasicMaterial({ color: '#00F0FF', transparent: true, opacity: 0.6 })
-        );
-        mesh.add(edgeMesh);
+        // Apply any parent transforms
+        center.applyMatrix4(mesh.matrixWorld);
 
-        const originalPos = mesh.position.clone();
-        const angle = (index / 15) * Math.PI * 2 + index * 0.7;
+        // Translate geometry so it's centered at origin (we'll position with the mesh)
+        const positions = geo.getAttribute('position');
+        for (let v = 0; v < positions.count; v++) {
+          positions.setXYZ(
+            v,
+            positions.getX(v) - (geo.boundingBox!.max.x + geo.boundingBox!.min.x) / 2,
+            positions.getY(v) - (geo.boundingBox!.max.y + geo.boundingBox!.min.y) / 2,
+            positions.getZ(v) - (geo.boundingBox!.max.z + geo.boundingBox!.min.z) / 2,
+          );
+        }
+        positions.needsUpdate = true;
+
+        const angle = (i / Math.max(islands.length, 1)) * Math.PI * 2 + i * 0.7;
         const radius = 5 + Math.random() * 4;
-        const scatterPos = new THREE.Vector3(
-          Math.cos(angle) * radius,
-          Math.sin(angle) * radius + (Math.random() - 0.5) * 5,
-          (Math.random() - 0.5) * 6 - 3
-        );
-        const scatterRot = new THREE.Euler(
-          Math.random() * Math.PI * 2,
-          Math.random() * Math.PI * 2,
-          Math.random() * Math.PI * 2
-        );
 
-        meshes.push({ mesh, originalPos, scatterPos, scatterRot });
-        index++;
-      }
+        allBlocks.push({
+          geometry: geo,
+          center,
+          scatterPos: new THREE.Vector3(
+            Math.cos(angle) * radius,
+            Math.sin(angle) * radius + (Math.random() - 0.5) * 5,
+            (Math.random() - 0.5) * 6 - 3
+          ),
+          scatterRot: new THREE.Euler(
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2
+          ),
+        });
+      });
     });
-    meshesRef.current = meshes;
+    setBlocks(allBlocks);
   }, [scene]);
 
   useFrame((state) => {
@@ -64,22 +167,42 @@ function LogoModel({ scrollProgress }: { scrollProgress: number }) {
     const t = Math.min(Math.max(scrollProgress * 1.5, 0), 1);
     const eased = t * t * (3 - 2 * t);
 
-    // Gentle floating when assembled
     groupRef.current.rotation.y = 0.2 + Math.sin(state.clock.elapsedTime * 0.3) * 0.1 * (1 - eased);
     groupRef.current.rotation.x = -0.3 + Math.sin(state.clock.elapsedTime * 0.2) * 0.05 * (1 - eased);
 
-    // Animate each mesh piece
-    for (const { mesh, originalPos, scatterPos, scatterRot } of meshesRef.current) {
-      mesh.position.lerpVectors(originalPos, scatterPos, eased);
-      mesh.rotation.x = THREE.MathUtils.lerp(0, scatterRot.x, eased);
-      mesh.rotation.y = THREE.MathUtils.lerp(0, scatterRot.y, eased);
-      mesh.rotation.z = THREE.MathUtils.lerp(0, scatterRot.z, eased);
-    }
+    meshRefs.current.forEach((mesh, i) => {
+      if (!mesh || !blocks[i]) return;
+      const b = blocks[i];
+      mesh.position.lerpVectors(b.center, b.scatterPos, eased);
+      mesh.rotation.x = THREE.MathUtils.lerp(0, b.scatterRot.x, eased);
+      mesh.rotation.y = THREE.MathUtils.lerp(0, b.scatterRot.y, eased);
+      mesh.rotation.z = THREE.MathUtils.lerp(0, b.scatterRot.z, eased);
+    });
   });
 
   return (
     <group ref={groupRef} position={[0.5, 0, 0]} scale={1.2}>
-      <primitive object={scene} />
+      {blocks.map((b, i) => (
+        <mesh
+          key={i}
+          ref={(el) => { if (el) meshRefs.current[i] = el; }}
+          geometry={b.geometry}
+          position={b.center}
+          castShadow
+          receiveShadow
+        >
+          <meshPhysicalMaterial
+            color="#6B00FF"
+            metalness={0.9}
+            roughness={0.15}
+            clearcoat={1}
+            clearcoatRoughness={0.1}
+            envMapIntensity={2}
+            emissive="#3300AA"
+            emissiveIntensity={0.15}
+          />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -122,7 +245,7 @@ function Scene({ scrollProgress }: { scrollProgress: number }) {
       <pointLight position={[0, 0, 3]} intensity={2} color="#6B00FF" distance={10} />
       <pointLight position={[3, -2, 1]} intensity={1} color="#00F0FF" distance={8} />
       <Particles />
-      <LogoModel scrollProgress={scrollProgress} />
+      <LogoBlocks scrollProgress={scrollProgress} />
       <Environment preset="night" />
     </>
   );

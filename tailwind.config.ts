@@ -52,10 +52,10 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         nova: {
-          purple: "hsl(var(--nova-purple))",
-          "purple-deep": "hsl(var(--nova-purple-deep))",
-          cyan: "hsl(var(--nova-cyan))",
-          glow: "hsl(var(--nova-glow))",
+          primary: "hsl(var(--nova-primary))",
+          "primary-light": "hsl(var(--nova-primary-light))",
+          cream: "hsl(var(--nova-cream))",
+          warm: "hsl(var(--nova-warm))",
         },
       },
       borderRadius: {
@@ -84,10 +84,6 @@ export default {
           "0%, 100%": { opacity: "0.4" },
           "50%": { opacity: "1" },
         },
-        "slide-in-left": {
-          "0%": { opacity: "0", transform: "translateX(-40px)" },
-          "100%": { opacity: "1", transform: "translateX(0)" },
-        },
         "marquee": {
           "0%": { transform: "translateX(0%)" },
           "100%": { transform: "translateX(-50%)" },
@@ -99,8 +95,7 @@ export default {
         "fade-in-up": "fade-in-up 0.8s ease-out forwards",
         "float": "float 6s ease-in-out infinite",
         "pulse-glow": "pulse-glow 3s ease-in-out infinite",
-        "slide-in-left": "slide-in-left 0.6s ease-out forwards",
-        "marquee": "marquee 20s linear infinite",
+        "marquee": "marquee 25s linear infinite",
       },
     },
   },

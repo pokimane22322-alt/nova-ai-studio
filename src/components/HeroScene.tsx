@@ -105,10 +105,9 @@ function LogoModel({ scrollProgress }: { scrollProgress: number }) {
         const center = new THREE.Vector3();
         geo.boundingBox!.getCenter(center);
 
-        const offset = center.clone();
         const positions = geo.getAttribute('position') as THREE.BufferAttribute;
         for (let v = 0; v < positions.count; v++) {
-          positions.setXYZ(v, positions.getX(v) - offset.x, positions.getY(v) - offset.y, positions.getZ(v) - offset.z);
+          positions.setXYZ(v, positions.getX(v) - center.x, positions.getY(v) - center.y, positions.getZ(v) - center.z);
         }
         positions.needsUpdate = true;
         geo.computeBoundingBox();
@@ -126,7 +125,7 @@ function LogoModel({ scrollProgress }: { scrollProgress: number }) {
           (Math.random() - 0.5) * Math.PI * 0.8,
           (Math.random() - 0.5) * Math.PI * 0.5,
         );
-        allBlocks.push({ geometry: geo, center: offset, scatterPos, scatterRot });
+        allBlocks.push({ geometry: geo, center, scatterPos, scatterRot });
       });
     });
     setBlocks(allBlocks);
@@ -169,14 +168,14 @@ function LogoModel({ scrollProgress }: { scrollProgress: number }) {
           receiveShadow
         >
           <meshPhysicalMaterial
-            color="#6B00FF"
-            metalness={0.92}
-            roughness={0.14}
-            clearcoat={1}
-            clearcoatRoughness={0.08}
-            envMapIntensity={2.2}
-            emissive="#2A0070"
-            emissiveIntensity={0.18}
+            color="#6B1A2A"
+            metalness={0.85}
+            roughness={0.18}
+            clearcoat={0.8}
+            clearcoatRoughness={0.1}
+            envMapIntensity={2.0}
+            emissive="#3A0A15"
+            emissiveIntensity={0.15}
           />
         </mesh>
       ))}
@@ -186,7 +185,7 @@ function LogoModel({ scrollProgress }: { scrollProgress: number }) {
 
 function Particles() {
   const pointsRef = useRef<THREE.Points>(null);
-  const count = 150;
+  const count = 80;
   const positions = useMemo(() => {
     const arr = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
@@ -199,7 +198,7 @@ function Particles() {
 
   useFrame((state) => {
     if (!pointsRef.current) return;
-    pointsRef.current.rotation.y = state.clock.elapsedTime * 0.015;
+    pointsRef.current.rotation.y = state.clock.elapsedTime * 0.01;
   });
 
   return (
@@ -207,7 +206,7 @@ function Particles() {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial color="#00F0FF" size={0.025} transparent opacity={0.4} sizeAttenuation />
+      <pointsMaterial color="#6B1A2A" size={0.02} transparent opacity={0.3} sizeAttenuation />
     </points>
   );
 }
@@ -215,14 +214,14 @@ function Particles() {
 function Scene({ scrollProgress }: { scrollProgress: number }) {
   return (
     <>
-      <ambientLight intensity={0.24} />
-      <directionalLight position={[5, 5, 5]} intensity={1} color="#8844FF" />
-      <directionalLight position={[-5, 3, 2]} intensity={0.55} color="#00F0FF" />
-      <pointLight position={[0, 0, 3]} intensity={2} color="#6B00FF" distance={10} />
-      <pointLight position={[3, -2, 1]} intensity={1} color="#00F0FF" distance={8} />
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[5, 5, 5]} intensity={1.2} color="#FFFFFF" />
+      <directionalLight position={[-5, 3, 2]} intensity={0.6} color="#FFE0E0" />
+      <pointLight position={[0, 0, 3]} intensity={1.5} color="#6B1A2A" distance={10} />
+      <pointLight position={[3, -2, 1]} intensity={0.8} color="#FF6B6B" distance={8} />
       <Particles />
       <LogoModel scrollProgress={scrollProgress} />
-      <Environment preset="night" />
+      <Environment preset="studio" />
     </>
   );
 }

@@ -6,47 +6,43 @@
 
 @layer base {
   :root {
-    --background: 260 30% 4%;
-    --foreground: 0 0% 95%;
+    --background: 30 20% 95%;
+    --foreground: 340 60% 15%;
 
-    --card: 260 25% 8%;
-    --card-foreground: 0 0% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 340 60% 15%;
 
-    --popover: 260 25% 8%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 340 60% 15%;
 
-    --primary: 268 100% 50%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 340 60% 25%;
+    --primary-foreground: 30 20% 95%;
 
-    --secondary: 260 20% 12%;
-    --secondary-foreground: 0 0% 90%;
+    --secondary: 30 15% 90%;
+    --secondary-foreground: 340 60% 15%;
 
-    --muted: 260 15% 15%;
-    --muted-foreground: 260 10% 55%;
+    --muted: 30 10% 88%;
+    --muted-foreground: 340 20% 40%;
 
-    --accent: 185 100% 50%;
-    --accent-foreground: 260 30% 4%;
+    --accent: 340 60% 25%;
+    --accent-foreground: 30 20% 95%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 260 20% 15%;
-    --input: 260 20% 15%;
-    --ring: 268 100% 50%;
+    --border: 340 15% 80%;
+    --input: 340 15% 80%;
+    --ring: 340 60% 25%;
 
-    --radius: 0.5rem;
+    --radius: 0.25rem;
 
-    --nova-purple: 268 100% 50%;
-    --nova-purple-deep: 270 100% 30%;
-    --nova-cyan: 185 100% 50%;
-    --nova-glow: 268 100% 60%;
+    --nova-primary: 340 60% 25%;
+    --nova-primary-light: 340 50% 40%;
+    --nova-cream: 30 20% 95%;
+    --nova-warm: 15 80% 55%;
 
-    --gradient-hero: linear-gradient(135deg, hsl(270 100% 8%) 0%, hsl(260 30% 4%) 40%, hsl(200 50% 5%) 100%);
-    --gradient-purple-cyan: linear-gradient(135deg, hsl(268 100% 50%), hsl(185 100% 50%));
-    --gradient-card: linear-gradient(145deg, hsl(260 25% 10%) 0%, hsl(260 25% 6%) 100%);
-
-    --shadow-glow-purple: 0 0 40px hsl(268 100% 50% / 0.3);
-    --shadow-glow-cyan: 0 0 40px hsl(185 100% 50% / 0.3);
+    --gradient-hero: radial-gradient(ellipse at 20% 50%, hsl(340 70% 30% / 0.5) 0%, hsl(15 60% 45% / 0.3) 40%, transparent 70%);
+    --gradient-cta: linear-gradient(135deg, hsl(340 60% 18%) 0%, hsl(340 70% 12%) 50%, hsl(15 40% 15%) 100%);
 
     --font-heading: 'Space Grotesk', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
@@ -60,7 +56,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-mono);
     overflow-x: hidden;
   }
 
@@ -69,7 +65,7 @@
   }
 
   ::selection {
-    background: hsl(var(--nova-purple) / 0.4);
+    background: hsl(var(--primary) / 0.3);
     color: hsl(var(--foreground));
   }
 
@@ -80,37 +76,47 @@
     background: hsl(var(--background));
   }
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--nova-purple) / 0.4);
+    background: hsl(var(--primary) / 0.3);
     border-radius: 3px;
   }
 }
 
 @layer utilities {
-  .text-gradient-purple-cyan {
-    background: var(--gradient-purple-cyan);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
   .bg-hero-gradient {
     background: var(--gradient-hero);
   }
 
-  .glow-purple {
-    box-shadow: var(--shadow-glow-purple);
-  }
-
-  .glow-cyan {
-    box-shadow: var(--shadow-glow-cyan);
+  .bg-cta-gradient {
+    background: var(--gradient-cta);
   }
 
   .font-mono-nova {
     font-family: var(--font-mono);
   }
 
-  .callout-line {
-    background: linear-gradient(90deg, hsl(var(--nova-cyan) / 0.8), transparent);
-    height: 1px;
+  .text-gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--nova-warm)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(hsl(var(--foreground) / 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--foreground) / 0.06) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  .grid-bg-dark {
+    background-image:
+      linear-gradient(hsl(var(--primary-foreground) / 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--primary-foreground) / 0.08) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  .grid-dots {
+    background-image: radial-gradient(circle, hsl(var(--foreground) / 0.15) 1px, transparent 1px);
+    background-size: 60px 60px;
   }
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import NavbarLogo from './NavbarLogo';
 
 const navLinks = [
   { label: 'ABOUT', href: '#about' },
@@ -26,9 +27,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
         {/* Logo */}
         <a href="#" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-sm bg-primary flex items-center justify-center text-primary-foreground font-heading font-bold text-sm">
-            N
-          </div>
+          <NavbarLogo />
           <span className="font-heading font-bold text-lg tracking-wider text-foreground">NOVA AI</span>
         </a>
 

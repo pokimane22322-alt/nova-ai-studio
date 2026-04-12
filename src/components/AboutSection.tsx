@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Bot } from 'lucide-react';
 
 const features = [
   {
@@ -11,7 +12,7 @@ const features = [
   },
   {
     title: 'Website Solutions',
-    description: 'Get a high-converting website built and maintained by AI. We handle design, copy, SEO, and ongoing optimization.',
+    description: 'Get a high-converting website built and maintained by professionals. We handle design, copy, SEO, and ongoing optimization.',
   },
 ];
 
@@ -61,7 +62,7 @@ export default function AboutSection() {
                 transitionDelay: `${0.2 + i * 0.15}s`,
               }}
             >
-              <div className="w-2 h-2 rotate-45 bg-nova-cyan mb-6" />
+              <Bot className="w-5 h-5 text-nova-cyan mb-6" />
               <h3 className="font-heading font-semibold text-lg text-foreground mb-3">
                 {f.title}
               </h3>

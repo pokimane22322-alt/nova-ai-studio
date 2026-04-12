@@ -15,14 +15,14 @@ function MiniLogo() {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         (child as THREE.Mesh).material = new THREE.MeshPhysicalMaterial({
-          color: '#6B00FF',
-          metalness: 0.9,
-          roughness: 0.15,
+          color: '#ffffff',
+          metalness: 0.3,
+          roughness: 0.2,
           clearcoat: 1,
           clearcoatRoughness: 0.1,
-          envMapIntensity: 2,
-          emissive: '#3300AA',
-          emissiveIntensity: 0.15,
+          envMapIntensity: 1.5,
+          emissive: '#ffffff',
+          emissiveIntensity: 0.3,
         });
       }
     });
@@ -76,7 +76,7 @@ function MiniLogo() {
 
 export default function NavbarLogo() {
   return (
-    <div className="w-12 h-12 mt-1">
+    <div className="w-12 h-12 mt-2">
       <Canvas
         camera={{ position: [0, 0, 5], fov: 50 }}
         gl={{ antialias: true, alpha: true }}

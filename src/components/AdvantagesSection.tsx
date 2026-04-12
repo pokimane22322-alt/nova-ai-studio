@@ -15,7 +15,7 @@ const advantages = [
   },
   {
     title: 'Cost reduction',
-    description: 'Replace repetitive manual tasks with AI that costs a fraction of hiring. Scale without proportional cost increase.',
+    description: 'Replace repetitive manual tasks with AI that costs a fraction of hiring. Pricing is tailored to your usage and deployment plan.',
   },
 ];
 

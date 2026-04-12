@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import NavbarLogo from './NavbarLogo';
 
 export default function CTASection() {
   const ref = useRef<HTMLDivElement>(null);
@@ -37,9 +38,7 @@ export default function CTASection() {
       {/* Footer */}
       <div className="max-w-7xl mx-auto mt-32 pt-8 border-t border-border flex flex-col sm:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-sm bg-primary flex items-center justify-center text-primary-foreground font-heading font-bold text-[10px]">
-            N
-          </div>
+          <NavbarLogo />
           <span className="font-heading font-bold text-sm tracking-wider text-foreground">NOVA AI</span>
         </div>
         <p className="font-mono text-[10px] tracking-widest text-muted-foreground">

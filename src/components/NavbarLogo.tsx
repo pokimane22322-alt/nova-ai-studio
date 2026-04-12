@@ -39,7 +39,7 @@ function MiniLogo() {
       const t = Math.min(clockRef.current / spinDuration, 1);
       // Ease out cubic
       const eased = 1 - Math.pow(1 - t, 3);
-      groupRef.current.rotation.y = eased * Math.PI * 2;
+      groupRef.current.rotation.y = eased * (Math.PI * 2 + Math.PI / 2);
       // Target rest rotation matching reference image
       groupRef.current.rotation.x = -0.3 * eased;
       groupRef.current.rotation.z = 0.05 * eased;
@@ -52,7 +52,7 @@ function MiniLogo() {
     } else {
       // Gentle wave/sway at rest position
       const elapsed = state.clock.elapsedTime - spinStartRef.current;
-      groupRef.current.rotation.y = Math.PI * 2 + Math.sin(elapsed * 0.8) * 0.12;
+      groupRef.current.rotation.y = Math.PI * 2 + Math.PI / 2 + Math.sin(elapsed * 0.8) * 0.12;
       groupRef.current.rotation.x = -0.3 + Math.sin(elapsed * 0.6) * 0.05;
       groupRef.current.rotation.z = 0.05 + Math.cos(elapsed * 0.7) * 0.03;
 
@@ -76,7 +76,7 @@ function MiniLogo() {
 
 export default function NavbarLogo() {
   return (
-    <div className="w-8 h-8">
+    <div className="w-12 h-12 mt-1">
       <Canvas
         camera={{ position: [0, 0, 5], fov: 50 }}
         gl={{ antialias: true, alpha: true }}

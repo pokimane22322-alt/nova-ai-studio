@@ -3,10 +3,6 @@ import { useGLTF, Environment } from '@react-three/drei';
 import { useRef, useMemo, Suspense, useEffect, useState } from 'react';
 import * as THREE from 'three';
 
-/**
- * Split a single BufferGeometry into connected components (islands).
- * Each island becomes its own geometry that can animate independently.
- */
 function splitIntoIslands(geometry: THREE.BufferGeometry): THREE.BufferGeometry[] {
   const posAttr = geometry.getAttribute('position');
   const normAttr = geometry.getAttribute('normal');
@@ -17,7 +13,6 @@ function splitIntoIslands(geometry: THREE.BufferGeometry): THREE.BufferGeometry[
   const indices = index.array;
   const triCount = indices.length / 3;
 
-  // Union-Find
   const parent = new Int32Array(vertCount);
   const rank = new Uint8Array(vertCount);
   for (let i = 0; i < vertCount; i++) parent[i] = i;
@@ -34,7 +29,6 @@ function splitIntoIslands(geometry: THREE.BufferGeometry): THREE.BufferGeometry[
     else { parent[rb] = ra; rank[ra]++; }
   }
 
-  // Merge vertices that share a position (within epsilon) to connect pieces
   const posMap = new Map<string, number>();
   const canonical = new Int32Array(vertCount);
   for (let i = 0; i < vertCount; i++) {
@@ -48,14 +42,12 @@ function splitIntoIslands(geometry: THREE.BufferGeometry): THREE.BufferGeometry[
     }
   }
 
-  // Union triangle vertices
   for (let t = 0; t < triCount; t++) {
     const a = indices[t * 3], b = indices[t * 3 + 1], c = indices[t * 3 + 2];
     union(a, b);
     union(b, c);
   }
 
-  // Group triangles by island
   const islandTris = new Map<number, number[]>();
   for (let t = 0; t < triCount; t++) {
     const root = find(indices[t * 3]);
@@ -63,12 +55,9 @@ function splitIntoIslands(geometry: THREE.BufferGeometry): THREE.BufferGeometry[
     islandTris.get(root)!.push(t);
   }
 
-  // Build a geometry per island
   const results: THREE.BufferGeometry[] = [];
   for (const [, tris] of islandTris) {
-    if (tris.length < 2) continue; // skip degenerate
-
-    // Remap vertices
+    if (tris.length < 2) continue;
     const vertRemap = new Map<number, number>();
     const newPositions: number[] = [];
     const newNormals: number[] = [];
@@ -119,15 +108,11 @@ function LogoBlocks({ scrollProgress }: { scrollProgress: number }) {
       const islands = splitIntoIslands(mesh.geometry);
 
       islands.forEach((geo, i) => {
-        // Center each island geometry on its own centroid
         geo.computeBoundingBox();
         const center = new THREE.Vector3();
         geo.boundingBox!.getCenter(center);
-
-        // Apply any parent transforms
         center.applyMatrix4(mesh.matrixWorld);
 
-        // Translate geometry so it's centered at origin (we'll position with the mesh)
         const positions = geo.getAttribute('position');
         for (let v = 0; v < positions.count; v++) {
           positions.setXYZ(
@@ -164,10 +149,43 @@ function LogoBlocks({ scrollProgress }: { scrollProgress: number }) {
   useFrame((state) => {
     if (!groupRef.current) return;
 
-    const t = Math.min(Math.max(scrollProgress * 1.5, 0), 1);
-    const eased = t * t * (3 - 2 * t);
+    // Scroll phases:
+    // 0-0.15: assembled → disassemble
+    // 0.15-0.25: scattered → fade out (move far away)
+    // 0.25-0.76: blocks hidden (boards showing)
+    // 0.76-0.92: fade in → reassemble
+    // 0.92-1.0: assembled, idle
 
-    // Match reference image orientation: 3/4 view, slight tilt
+    let disassemble = 0; // 0 = assembled, 1 = scattered
+    let visibility = 1; // 0 = hidden, 1 = visible
+
+    const p = scrollProgress;
+
+    if (p <= 0.15) {
+      // Disassemble phase
+      disassemble = Math.min(1, (p / 0.15));
+      visibility = 1;
+    } else if (p <= 0.25) {
+      // Fade out phase - scatter further and fade
+      disassemble = 1;
+      visibility = 1 - ((p - 0.15) / 0.1);
+    } else if (p <= 0.76) {
+      // Hidden during boards
+      disassemble = 1;
+      visibility = 0;
+    } else if (p <= 0.92) {
+      // Reassemble phase
+      const t = (p - 0.76) / 0.16;
+      disassemble = 1 - t;
+      visibility = t;
+    } else {
+      // Settled
+      disassemble = 0;
+      visibility = 1;
+    }
+
+    const eased = disassemble * disassemble * (3 - 2 * disassemble);
+
     groupRef.current.rotation.y = 0.4 + Math.sin(state.clock.elapsedTime * 0.3) * 0.08 * (1 - eased);
     groupRef.current.rotation.x = -0.3 + Math.sin(state.clock.elapsedTime * 0.2) * 0.04 * (1 - eased);
     groupRef.current.rotation.z = 0.05 + Math.sin(state.clock.elapsedTime * 0.25) * 0.02 * (1 - eased);
@@ -175,10 +193,22 @@ function LogoBlocks({ scrollProgress }: { scrollProgress: number }) {
     meshRefs.current.forEach((mesh, i) => {
       if (!mesh || !blocks[i]) return;
       const b = blocks[i];
+
+      // Scale for fade effect
+      const scale = visibility;
+      mesh.scale.setScalar(scale);
+
       mesh.position.lerpVectors(b.center, b.scatterPos, eased);
       mesh.rotation.x = THREE.MathUtils.lerp(0, b.scatterRot.x, eased);
       mesh.rotation.y = THREE.MathUtils.lerp(0, b.scatterRot.y, eased);
       mesh.rotation.z = THREE.MathUtils.lerp(0, b.scatterRot.z, eased);
+
+      // Update material opacity
+      const mat = mesh.material as THREE.MeshPhysicalMaterial;
+      if (mat) {
+        mat.transparent = true;
+        mat.opacity = visibility;
+      }
     });
   });
 
@@ -202,6 +232,7 @@ function LogoBlocks({ scrollProgress }: { scrollProgress: number }) {
             envMapIntensity={2}
             emissive="#3300AA"
             emissiveIntensity={0.15}
+            transparent
           />
         </mesh>
       ))}

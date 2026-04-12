@@ -167,8 +167,10 @@ function LogoBlocks({ scrollProgress }: { scrollProgress: number }) {
     const t = Math.min(Math.max(scrollProgress * 1.5, 0), 1);
     const eased = t * t * (3 - 2 * t);
 
-    groupRef.current.rotation.y = 0.2 + Math.sin(state.clock.elapsedTime * 0.3) * 0.1 * (1 - eased);
-    groupRef.current.rotation.x = -0.3 + Math.sin(state.clock.elapsedTime * 0.2) * 0.05 * (1 - eased);
+    // Match reference image orientation: 3/4 view, slight tilt
+    groupRef.current.rotation.y = 0.4 + Math.sin(state.clock.elapsedTime * 0.3) * 0.08 * (1 - eased);
+    groupRef.current.rotation.x = -0.3 + Math.sin(state.clock.elapsedTime * 0.2) * 0.04 * (1 - eased);
+    groupRef.current.rotation.z = 0.05 + Math.sin(state.clock.elapsedTime * 0.25) * 0.02 * (1 - eased);
 
     meshRefs.current.forEach((mesh, i) => {
       if (!mesh || !blocks[i]) return;
@@ -181,7 +183,7 @@ function LogoBlocks({ scrollProgress }: { scrollProgress: number }) {
   });
 
   return (
-    <group ref={groupRef} position={[0.5, 0, 0]} scale={1.2}>
+    <group ref={groupRef} position={[0.5, 0.2, 0]} scale={1.2} rotation={[-0.3, 0.4, 0.05]}>
       {blocks.map((b, i) => (
         <mesh
           key={i}

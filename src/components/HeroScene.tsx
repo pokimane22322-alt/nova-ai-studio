@@ -183,7 +183,7 @@ function LogoBlocks({ scrollProgress }: { scrollProgress: number }) {
   });
 
   return (
-    <group ref={groupRef} position={[0.5, 0.2, 0]} scale={1.2} rotation={[-0.3, 0.4, 0.05]}>
+    <group ref={groupRef} position={[0.5, -0.5, 0]} scale={1.2} rotation={[-0.3, 0.4, 0.05]}>
       {blocks.map((b, i) => (
         <mesh
           key={i}

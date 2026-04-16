@@ -5,6 +5,10 @@ import { Bot } from 'lucide-react';
 
 const boards = [
   {
+    title: 'Website Solutions',
+    description: 'Get a high-converting website built and maintained by professionals. We handle design, copy, SEO, and ongoing optimization.',
+  },
+  {
     title: 'AI Agent Deployment',
     description: 'Deploy local AI agents that understand your business processes, work 24/7, and integrate seamlessly with your existing tools.',
   },
@@ -13,8 +17,8 @@ const boards = [
     description: 'Automate complex workflows — from scheduling and invoicing to customer follow-ups — with AI that learns and adapts.',
   },
   {
-    title: 'Website Solutions',
-    description: 'Get a high-converting website built and maintained by professionals. We handle design, copy, SEO, and ongoing optimization.',
+    title: 'Internal Apps',
+    description: 'Custom internal tools and apps for businesses and startups — dashboards, CRMs, and operational software tailored to how your team actually works.',
   },
 ];
 

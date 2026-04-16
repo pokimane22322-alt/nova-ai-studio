@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Compass, Cpu, Rocket } from 'lucide-react';
+import { Compass, Cpu, Rocket, CheckCircle2 } from 'lucide-react';
 
 const steps = [
   {
@@ -8,6 +8,8 @@ const steps = [
     title: 'Tell us your workflow',
     description: 'We map your business processes — the tasks eating your time, the bottlenecks slowing growth, and the opportunities hiding in plain sight.',
     Icon: Compass,
+    milestone: 'Week 1',
+    bullets: ['Discovery call', 'Process audit', 'Opportunity map'],
   },
   {
     num: '02',
@@ -15,6 +17,8 @@ const steps = [
     title: 'We deploy your agents',
     description: 'Our AI agents are configured to your exact needs. They run locally, integrate with your tools, and start working immediately — no coding required.',
     Icon: Cpu,
+    milestone: 'Week 2-3',
+    bullets: ['Agent configuration', 'Tool integration', 'Live deployment'],
   },
   {
     num: '03',
@@ -22,13 +26,15 @@ const steps = [
     title: 'Watch your business grow',
     description: 'Your agents learn and improve over time. Scale operations without hiring. Redirect your energy toward strategy, relationships, and revenue.',
     Icon: Rocket,
+    milestone: 'Ongoing',
+    bullets: ['Performance tuning', 'New workflows', 'Continuous support'],
   },
 ];
 
 export default function HowItWorksSection() {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
-  const [activeStep, setActiveStep] = useState(0);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -40,25 +46,35 @@ export default function HowItWorksSection() {
   }, []);
 
   useEffect(() => {
-    if (!visible) return;
-    const interval = setInterval(() => {
-      setActiveStep((prev) => (prev + 1) % steps.length);
-    }, 3500);
-    return () => clearInterval(interval);
-  }, [visible]);
+    const handler = () => {
+      if (!ref.current) return;
+      const rect = ref.current.getBoundingClientRect();
+      const total = rect.height - window.innerHeight * 0.5;
+      const scrolled = -rect.top + window.innerHeight * 0.3;
+      const p = Math.max(0, Math.min(1, scrolled / total));
+      setProgress(p);
+    };
+    handler();
+    window.addEventListener('scroll', handler, { passive: true });
+    return () => window.removeEventListener('scroll', handler);
+  }, []);
 
   return (
     <section id="how-it-works" ref={ref} className="relative py-32 px-6 overflow-hidden">
-      {/* Background glow */}
+      {/* Background ambient glow */}
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full opacity-20 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, hsl(268 100% 50% / 0.3), transparent 70%)' }}
+        className="absolute top-1/3 left-1/4 w-[500px] h-[500px] rounded-full opacity-15 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, hsl(268 100% 50% / 0.4), transparent 70%)' }}
+      />
+      <div
+        className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full opacity-15 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, hsl(185 100% 50% / 0.3), transparent 70%)' }}
       />
 
-      <div className="relative max-w-7xl mx-auto">
+      <div className="relative max-w-6xl mx-auto">
         <div className={`transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <div className="inline-block border border-nova-cyan/40 px-3 py-1 font-mono text-[10px] tracking-[0.3em] text-nova-cyan mb-4">
-            HOW IT WORKS
+            THE ROADMAP
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-heading font-bold leading-[0.95] mb-4">
             <span className="text-foreground">YOUR PATH TO</span>
@@ -68,111 +84,180 @@ export default function HowItWorksSection() {
               <span className="text-gradient-purple-cyan">AUTOMATION</span>
             </span>
           </h2>
+          <p className="text-muted-foreground text-sm max-w-md mt-4">
+            A clear, three-phase journey from manual chaos to autonomous operations.
+          </p>
         </div>
 
-        {/* Connecting line */}
-        <div className="relative mt-24">
-          <div className="hidden md:block absolute top-[60px] left-[8%] right-[8%] h-[2px] bg-border">
+        {/* Roadmap */}
+        <div className="relative mt-24 pl-8 md:pl-0">
+          {/* Vertical track - mobile (left aligned) */}
+          <div className="md:hidden absolute left-3 top-0 bottom-0 w-[2px] bg-border">
             <div
-              className="h-full bg-gradient-to-r from-nova-purple via-nova-cyan to-nova-purple transition-all duration-1000 ease-out"
-              style={{
-                width: visible ? `${((activeStep + 1) / steps.length) * 100}%` : '0%',
-                boxShadow: '0 0 12px hsl(185 100% 50% / 0.6)',
-              }}
+              className="absolute top-0 left-0 w-full bg-gradient-to-b from-nova-purple via-nova-cyan to-nova-purple transition-all duration-300"
+              style={{ height: `${progress * 100}%`, boxShadow: '0 0 12px hsl(185 100% 50% / 0.6)' }}
             />
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 md:gap-6 relative">
+          {/* Vertical track - desktop (centered) */}
+          <div className="hidden md:block absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[2px] bg-border">
+            <div
+              className="absolute top-0 left-0 w-full bg-gradient-to-b from-nova-purple via-nova-cyan to-nova-purple transition-all duration-300"
+              style={{ height: `${progress * 100}%`, boxShadow: '0 0 16px hsl(185 100% 50% / 0.6)' }}
+            />
+          </div>
+
+          <div className="space-y-20 md:space-y-32">
             {steps.map((step, i) => {
-              const isActive = i === activeStep;
               const Icon = step.Icon;
+              const isLeft = i % 2 === 0;
+              const stepProgress = (i + 0.5) / steps.length;
+              const reached = progress >= stepProgress - 0.15;
+
               return (
                 <div
                   key={i}
-                  onMouseEnter={() => setActiveStep(i)}
-                  className="group relative cursor-pointer transition-all duration-700"
+                  className="relative transition-all duration-700"
                   style={{
                     opacity: visible ? 1 : 0,
-                    transform: visible
-                      ? `translateY(${i % 2 === 0 ? '0' : '40px'})`
-                      : 'translateY(40px)',
-                    transitionDelay: `${0.3 + i * 0.2}s`,
+                    transform: visible ? 'translateY(0)' : 'translateY(40px)',
+                    transitionDelay: `${0.2 + i * 0.15}s`,
                   }}
                 >
-                  {/* Number badge - circular, sits on the line */}
-                  <div className="relative flex justify-center mb-6">
+                  {/* Milestone marker on the track */}
+                  <div className="absolute md:left-1/2 left-3 -translate-x-1/2 top-2 z-10">
                     <div
-                      className={`relative w-[120px] h-[120px] rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
-                        isActive
-                          ? 'border-nova-cyan bg-card scale-110'
-                          : 'border-border bg-card scale-100'
+                      className={`relative w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
+                        reached
+                          ? 'border-nova-cyan bg-background scale-110'
+                          : 'border-border bg-background'
                       }`}
                       style={{
-                        boxShadow: isActive
-                          ? '0 0 40px hsl(185 100% 50% / 0.4), inset 0 0 20px hsl(268 100% 50% / 0.2)'
-                          : 'none',
+                        boxShadow: reached ? '0 0 20px hsl(185 100% 50% / 0.6)' : 'none',
                       }}
                     >
-                      {/* Rotating ring */}
                       <div
-                        className={`absolute inset-[-6px] rounded-full border border-dashed transition-opacity duration-500 ${
-                          isActive ? 'opacity-100 border-nova-purple/60' : 'opacity-0'
-                        }`}
-                        style={{
-                          animation: isActive ? 'spin 8s linear infinite' : 'none',
-                        }}
-                      />
-                      <Icon
-                        className={`w-10 h-10 transition-all duration-500 ${
-                          isActive ? 'text-nova-cyan scale-110' : 'text-muted-foreground'
+                        className={`w-2 h-2 rounded-full transition-all duration-500 ${
+                          reached ? 'bg-nova-cyan' : 'bg-border'
                         }`}
                       />
-                      {/* Floating number */}
-                      <span
-                        className={`absolute -top-3 -right-3 font-mono text-xs font-bold px-2 py-1 rounded-sm border transition-all duration-500 ${
-                          isActive
-                            ? 'border-nova-cyan text-nova-cyan bg-background'
-                            : 'border-border text-muted-foreground bg-background'
-                        }`}
-                      >
-                        {step.num}
-                      </span>
+                      {reached && (
+                        <div className="absolute inset-[-8px] rounded-full border border-nova-cyan/30 animate-ping" />
+                      )}
                     </div>
                   </div>
 
-                  {/* Card content */}
+                  {/* Content card */}
                   <div
-                    className={`relative p-6 border rounded-sm transition-all duration-500 ${
-                      isActive
-                        ? 'border-nova-cyan/50 bg-card/80'
-                        : 'border-border bg-card/30'
+                    className={`pl-12 md:pl-0 md:grid md:grid-cols-2 md:gap-16 ${
+                      isLeft ? '' : 'md:[&>div:first-child]:col-start-2'
                     }`}
-                    style={{
-                      backdropFilter: 'blur(10px)',
-                      transform: isActive ? 'translateY(-8px)' : 'translateY(0)',
-                      boxShadow: isActive ? '0 20px 40px -20px hsl(268 100% 50% / 0.4)' : 'none',
-                    }}
                   >
-                    <span className="font-mono text-[10px] tracking-widest text-nova-cyan uppercase">
-                      {step.label}
-                    </span>
-                    <h3 className="font-heading text-xl font-semibold text-foreground mt-2 mb-3">
-                      {step.title}
-                    </h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">
-                      {step.description}
-                    </p>
+                    <div className={isLeft ? 'md:text-right md:pr-8' : 'md:pl-8'}>
+                      {/* Milestone badge */}
+                      <div
+                        className={`inline-flex items-center gap-2 px-3 py-1 border rounded-sm font-mono text-[10px] tracking-widest mb-4 transition-all duration-500 ${
+                          reached
+                            ? 'border-nova-cyan/50 text-nova-cyan bg-nova-cyan/5'
+                            : 'border-border text-muted-foreground'
+                        }`}
+                      >
+                        <span className="w-1 h-1 rounded-full bg-current" />
+                        {step.milestone}
+                      </div>
 
-                    {/* Bottom accent bar */}
-                    <div
-                      className={`absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-nova-purple to-nova-cyan transition-all duration-700 ${
-                        isActive ? 'w-full' : 'w-0'
-                      }`}
-                    />
+                      <div
+                        className={`relative p-6 border rounded-sm overflow-hidden transition-all duration-500 ${
+                          reached ? 'border-nova-purple/40 bg-card/80' : 'border-border bg-card/30'
+                        }`}
+                        style={{
+                          backdropFilter: 'blur(10px)',
+                          boxShadow: reached ? '0 20px 50px -25px hsl(268 100% 50% / 0.5)' : 'none',
+                        }}
+                      >
+                        {/* Number watermark */}
+                        <span
+                          className={`absolute top-2 ${
+                            isLeft ? 'right-4 md:right-4' : 'right-4'
+                          } font-heading text-6xl font-bold opacity-10 leading-none ${
+                            reached ? 'text-nova-cyan' : 'text-foreground'
+                          }`}
+                        >
+                          {step.num}
+                        </span>
+
+                        <div className={`flex items-center gap-3 mb-4 ${isLeft ? 'md:justify-end' : ''}`}>
+                          <div
+                            className={`w-10 h-10 rounded-sm border flex items-center justify-center transition-all duration-500 ${
+                              reached ? 'border-nova-cyan bg-nova-cyan/10' : 'border-border'
+                            } ${isLeft ? 'md:order-2' : ''}`}
+                          >
+                            <Icon
+                              className={`w-5 h-5 transition-colors ${
+                                reached ? 'text-nova-cyan' : 'text-muted-foreground'
+                              }`}
+                            />
+                          </div>
+                          <span className="font-mono text-[10px] tracking-widest text-nova-cyan uppercase">
+                            {step.label}
+                          </span>
+                        </div>
+
+                        <h3 className="font-heading text-xl md:text-2xl font-semibold text-foreground mb-3 relative z-10">
+                          {step.title}
+                        </h3>
+                        <p className="text-muted-foreground text-sm leading-relaxed mb-5 relative z-10">
+                          {step.description}
+                        </p>
+
+                        <ul className={`space-y-2 relative z-10 ${isLeft ? 'md:flex md:flex-col md:items-end' : ''}`}>
+                          {step.bullets.map((b, bi) => (
+                            <li
+                              key={bi}
+                              className={`flex items-center gap-2 text-xs font-mono text-muted-foreground ${
+                                isLeft ? 'md:flex-row-reverse' : ''
+                              }`}
+                            >
+                              <CheckCircle2
+                                className={`w-3.5 h-3.5 ${reached ? 'text-nova-cyan' : 'text-border'}`}
+                              />
+                              <span>{b}</span>
+                            </li>
+                          ))}
+                        </ul>
+
+                        {/* Bottom accent */}
+                        <div
+                          className={`absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-nova-purple to-nova-cyan transition-all duration-1000 ${
+                            reached ? 'w-full' : 'w-0'
+                          }`}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
             })}
+          </div>
+
+          {/* End marker */}
+          <div className="relative md:flex md:justify-center mt-16 pl-12 md:pl-0">
+            <div
+              className={`inline-flex items-center gap-3 px-5 py-3 border rounded-sm transition-all duration-700 ${
+                progress > 0.85
+                  ? 'border-nova-cyan/50 bg-nova-cyan/5'
+                  : 'border-border bg-card/30'
+              }`}
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  progress > 0.85 ? 'bg-nova-cyan animate-pulse' : 'bg-border'
+                }`}
+              />
+              <span className="font-mono text-[10px] tracking-widest text-foreground uppercase">
+                Destination: Autonomous Operations
+              </span>
+            </div>
           </div>
         </div>
       </div>

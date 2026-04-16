@@ -42,10 +42,11 @@ export default function HeroSection() {
   // 0.25-0.42 board1, 0.42-0.59 board2, 0.59-0.76 board3
   // 0.76-0.92 reassemble, 0.92-1.0 settled
   const getBoardOpacity = (index: number) => {
-    const boardStart = 0.25 + index * 0.17;
-    const boardEnd = boardStart + 0.17;
-    const fadeIn = 0.04;
-    const fadeOut = 0.04;
+    const segment = 0.14;
+    const boardStart = 0.2 + index * segment;
+    const boardEnd = boardStart + segment;
+    const fadeIn = 0.035;
+    const fadeOut = 0.035;
 
     if (scrollProgress < boardStart || scrollProgress > boardEnd) return 0;
     if (scrollProgress < boardStart + fadeIn) return (scrollProgress - boardStart) / fadeIn;
@@ -54,8 +55,9 @@ export default function HeroSection() {
   };
 
   const getBoardTranslateY = (index: number) => {
-    const boardStart = 0.25 + index * 0.17;
-    const boardEnd = boardStart + 0.17;
+    const segment = 0.14;
+    const boardStart = 0.2 + index * segment;
+    const boardEnd = boardStart + segment;
     const mid = (boardStart + boardEnd) / 2;
 
     if (scrollProgress < boardStart) return 60;

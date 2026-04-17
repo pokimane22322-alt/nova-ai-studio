@@ -57,15 +57,11 @@ Deno.serve(async (req) => {
       .from('clients').select('*').eq('id', body.client_id).maybeSingle();
     if (cErr || !client) return json({ error: 'Client not found' }, 404);
 
-    // Generate invoice number
-    const { data: seqData } = await supabase.rpc('nextval' as any, { seq: 'invoice_seq' }).single().catch(() => ({ data: null }));
-    let invoiceNumber: string;
-    if (seqData && typeof seqData === 'object' && 'nextval' in (seqData as any)) {
-      invoiceNumber = `INV-${(seqData as any).nextval}`;
-    } else {
-      // Fallback: use timestamp
-      invoiceNumber = `INV-${Date.now().toString().slice(-7)}`;
-    }
+    // Generate invoice number via DB sequence
+    const { data: numData, error: numErr } = await supabase.rpc('next_invoice_number' as any);
+    const invoiceNumber: string = (!numErr && typeof numData === 'string')
+      ? numData
+      : `INV-${Date.now().toString().slice(-7)}`;
 
     // Build PDF
     const pdf = buildPdf({

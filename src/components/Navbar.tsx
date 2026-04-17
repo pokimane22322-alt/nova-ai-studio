@@ -43,6 +43,12 @@ export default function Navbar() {
             </a>
           ))}
           <a
+            href="/portal"
+            className="font-mono text-xs tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+          >
+            PORTAL
+          </a>
+          <a
             href="#get-started"
             className="px-5 py-2 bg-primary text-primary-foreground font-mono text-xs tracking-widest rounded-sm hover:bg-nova-glow transition-colors"
           >
